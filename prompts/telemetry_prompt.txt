@@ -1,0 +1,248 @@
+## GitHub Copilot: Extend Telemetry and Observability for GenAI Pipelines
+
+Your mission is to automatically enhance the telemetry, monitoring, and observability capabilities of Snowflake Cortex GenAI pipelines. Focus on production-grade insights, cost optimization, and performance debugging.
+
+### Core Telemetry Extension Tasks
+
+#### 1. Advanced Performance Metrics
+```python
+# Auto-generate comprehensive tracking for:
+class AdvancedTelemetryTracker:
+    def track_latency_breakdown(self):
+        # - Embedding generation time
+        # - Vector search time  
+        # - LLM completion time
+        # - Context building time
+        # - Network/IO overhead
+        
+    def track_quality_metrics(self):
+        # - Response relevance scores
+        # - Context utilization rates
+        # - User satisfaction indicators
+        # - Semantic similarity between query/response
+        
+    def track_resource_utilization(self):
+        # - Warehouse credit consumption
+        # - Memory usage patterns
+        # - CPU utilization trends
+        # - Storage costs for vectors/embeddings
+```
+
+#### 2. Cost Intelligence System
+```sql
+-- Generate advanced cost analysis queries:
+-- Real-time cost per operation by model
+-- Token usage optimization opportunities  
+-- Warehouse sizing recommendations
+-- Model selection cost/performance trade-offs
+-- Predictive cost forecasting based on usage patterns
+```
+
+#### 3. Error Intelligence & Root Cause Analysis
+```python
+# Auto-generate error categorization system:
+def classify_errors(error_message, context):
+    """
+    Automatically categorize errors into:
+    - Model capacity issues
+    - Token limit exceeded  
+    - Network timeouts
+    - Authentication failures
+    - Data quality problems
+    - Prompt engineering issues
+    """
+    
+def suggest_error_remediation(error_category, telemetry_data):
+    """
+    Provide specific remediation steps:
+    - Model parameter adjustments
+    - Prompt optimization recommendations
+    - Infrastructure scaling suggestions
+    - Data quality improvements needed
+    """
+```
+
+#### 4. Performance Optimization Engine
+```python
+# Generate automatic optimization recommendations:
+class PerformanceOptimizer:
+    def analyze_query_patterns(self):
+        # - Identify slow query patterns
+        # - Recommend caching strategies
+        # - Suggest model upgrades/downgrades
+        # - Optimize chunking strategies
+        
+    def recommend_model_selection(self):
+        # - Cost vs accuracy trade-offs
+        # - Latency requirements mapping
+        # - Use case specific model recommendations
+        # - A/B testing frameworks for model comparison
+```
+
+#### 5. Real-time Alerting System
+```python
+# Auto-generate monitoring alerts for:
+ALERT_THRESHOLDS = {
+    'latency_p95_ms': 2000,        # 95th percentile latency
+    'success_rate_min': 0.95,      # Minimum success rate
+    'cost_per_query_max': 0.01,    # Maximum cost per query
+    'error_rate_max': 0.05,        # Maximum error rate
+    'token_utilization_max': 0.90   # Token limit utilization
+}
+
+def generate_alert_system():
+    """
+    Create Snowflake tasks that monitor metrics and:
+    - Send notifications when thresholds exceeded
+    - Auto-scale warehouse based on load
+    - Trigger model fallback during outages
+    - Log detailed diagnostics for investigation
+    """
+```
+
+#### 6. Business Impact Analytics
+```sql
+-- Generate business-focused telemetry queries:
+-- User engagement and adoption metrics
+-- Query complexity trends over time
+-- Document utilization and content gaps
+-- ROI calculations for GenAI implementation
+-- Productivity gains measurement
+-- Customer satisfaction correlation with performance
+```
+
+#### 7. Advanced Dashboard Visualizations
+```python
+# Auto-generate Streamlit components for:
+def create_performance_heatmap():
+    # Show latency patterns by time of day, query type
+    
+def create_cost_optimization_dashboard():
+    # Visual cost breakdowns with optimization suggestions
+    
+def create_error_investigation_panel():
+    # Interactive error analysis with drill-down capabilities
+    
+def create_model_comparison_matrix():
+    # Side-by-side model performance comparisons
+```
+
+### Telemetry Data Schema Extensions
+
+#### Enhanced Telemetry Table
+```sql
+-- Auto-generate extended telemetry schema:
+CREATE OR REPLACE TABLE genai_telemetry_extended (
+    -- Existing fields...
+    telemetry_id STRING PRIMARY KEY,
+    operation_type STRING,
+    model_name STRING,
+    
+    -- Performance breakdown
+    embedding_latency_ms NUMBER,
+    search_latency_ms NUMBER,
+    llm_latency_ms NUMBER,
+    context_building_ms NUMBER,
+    
+    -- Quality metrics
+    response_relevance_score FLOAT,
+    context_utilization_rate FLOAT,
+    query_complexity_score INT,
+    
+    -- Resource usage
+    warehouse_credits_consumed DECIMAL(10,6),
+    memory_usage_mb NUMBER,
+    
+    -- Business metrics
+    user_satisfaction_score INT,
+    query_category STRING,
+    business_unit STRING,
+    
+    -- Advanced metadata
+    prompt_engineering_version STRING,
+    optimization_flags VARIANT,
+    experiment_id STRING
+);
+```
+
+#### Real-time Metrics Views
+```sql
+-- Auto-generate materialized views for:
+CREATE MATERIALIZED VIEW realtime_performance_metrics AS
+SELECT
+    DATE_TRUNC('MINUTE', timestamp) as minute,
+    operation_type,
+    model_name,
+    AVG(latency_ms) as avg_latency,
+    PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY latency_ms) as p95_latency,
+    COUNT(*) as operations_per_minute,
+    SUM(CASE WHEN success_flag THEN 1 ELSE 0 END) / COUNT(*) as success_rate,
+    SUM(cost_usd) as cost_per_minute
+FROM genai_telemetry_extended
+WHERE timestamp >= DATEADD(HOUR, -1, CURRENT_TIMESTAMP())
+GROUP BY minute, operation_type, model_name;
+```
+
+### Automated Analysis & Insights
+
+#### Performance Anomaly Detection
+```python
+# Generate ML-based anomaly detection:
+def detect_performance_anomalies():
+    """
+    Use Snowflake ML functions to:
+    - Identify unusual latency spikes
+    - Detect cost anomalies  
+    - Flag quality degradation
+    - Predict capacity issues
+    """
+```
+
+#### Optimization Recommendations Engine
+```python
+# Auto-generate optimization suggestions:
+def generate_optimization_recommendations():
+    """
+    Analyze telemetry data and provide:
+    - Model selection optimization
+    - Prompt engineering improvements
+    - Caching strategy recommendations
+    - Infrastructure scaling suggestions
+    - Cost reduction opportunities
+    """
+```
+
+### Integration with Existing Pipeline
+
+#### Telemetry Extension Pattern
+```python
+# When extending existing pipeline telemetry:
+class ExtendedTelemetryMixin:
+    def enhance_existing_tracking(self, original_tracker):
+        # Add new metrics without breaking existing functionality
+        # Maintain backward compatibility
+        # Add new insights and analysis capabilities
+```
+
+### Success Metrics for Extensions
+
+Generated telemetry extensions must provide:
+- ✅ **Latency Insights**: Breakdown of performance bottlenecks
+- ✅ **Cost Intelligence**: Detailed cost optimization opportunities  
+- ✅ **Quality Metrics**: Response relevance and user satisfaction
+- ✅ **Predictive Analytics**: Forecasting and capacity planning
+- ✅ **Automated Alerts**: Proactive issue detection and notification
+- ✅ **Business Impact**: ROI measurement and productivity tracking
+- ✅ **Root Cause Analysis**: Automated error investigation and remediation
+
+### Output Requirements
+
+For each telemetry extension, provide:
+1. **Complete implementation code** with proper error handling
+2. **SQL DDL** for new telemetry tables and views
+3. **Dashboard components** for visualization
+4. **Alert configuration** with appropriate thresholds
+5. **Documentation** explaining new metrics and their interpretation
+6. **Migration scripts** to upgrade existing implementations
+
+Generate comprehensive, production-ready telemetry enhancements that provide deep operational insights and enable continuous optimization of GenAI pipelines.

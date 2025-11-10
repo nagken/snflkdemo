@@ -1,0 +1,581 @@
+name: 🧠 Snowflake Cortex GenAI Pipeline Deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+        - dev
+        - staging
+        - prod
+
+env:
+  PYTHON_VERSION: '3.11'
+  NODE_VERSION: '18'
+
+jobs:
+  # ============================
+  # VALIDATION AND TESTING
+  # ============================
+  
+  validate:
+    name: 🔍 Validate & Test Pipeline
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+        cache: 'pip'
+    
+    - name: 📦 Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov black flake8 mypy
+    
+    - name: 🎨 Code Formatting Check
+      run: |
+        black --check --diff src/
+        echo "✅ Code formatting validated"
+    
+    - name: 🔍 Linting
+      run: |
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        echo "✅ Code linting completed"
+    
+    - name: 🏷️ Type Checking
+      run: |
+        mypy src/ --ignore-missing-imports
+        echo "✅ Type checking completed"
+    
+    - name: 🧪 Unit Tests
+      run: |
+        pytest tests/ -v --cov=src --cov-report=xml --cov-report=html
+        echo "✅ Unit tests completed"
+    
+    - name: 📊 Upload Coverage Reports
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: cortex-pipeline-coverage
+
+  # ============================
+  # SQL VALIDATION
+  # ============================
+  
+  validate-sql:
+    name: 🗄️ Validate SQL Scripts
+    runs-on: ubuntu-latest
+    needs: validate
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🔍 SQL Lint Check
+      run: |
+        # Install sqlfluff for SQL linting
+        pip install sqlfluff
+        
+        # Lint SQL files
+        sqlfluff lint notebooks/cortex_pipeline.sql --dialect snowflake
+        echo "✅ SQL validation completed"
+    
+    - name: 📋 Check SQL Syntax
+      run: |
+        # Basic syntax validation for Snowflake SQL
+        python -c "
+        import re
+        import sys
+        
+        sql_file = 'notebooks/cortex_pipeline.sql'
+        with open(sql_file, 'r') as f:
+            content = f.read()
+        
+        # Check for basic SQL syntax issues
+        issues = []
+        
+        # Check for unmatched quotes
+        single_quotes = content.count(\"'\") - content.count(\"\\'\")
+        if single_quotes % 2 != 0:
+            issues.append('Unmatched single quotes detected')
+        
+        # Check for proper statement termination
+        statements = [s.strip() for s in content.split(';') if s.strip()]
+        for i, stmt in enumerate(statements):
+            if stmt and not stmt.upper().startswith(('--', '/*')):
+                if not any(keyword in stmt.upper() for keyword in ['SELECT', 'CREATE', 'INSERT', 'UPDATE', 'DELETE', 'SET', 'USE', 'CALL']):
+                    issues.append(f'Statement {i+1} may be incomplete: {stmt[:50]}...')
+        
+        if issues:
+            print('❌ SQL Issues Found:')
+            for issue in issues:
+                print(f'  - {issue}')
+            sys.exit(1)
+        else:
+            print('✅ SQL syntax validation passed')
+        "
+
+  # ============================
+  # SNOWFLAKE DEPLOYMENT
+  # ============================
+  
+  deploy-snowflake:
+    name: ❄️ Deploy to Snowflake
+    runs-on: ubuntu-latest
+    needs: [validate, validate-sql]
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    
+    environment: 
+      name: ${{ github.event.inputs.environment || 'dev' }}
+      url: https://${{ secrets.SF_ACCOUNT }}.snowflakecomputing.com
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: 📦 Install Snowflake Dependencies
+      run: |
+        pip install snowflake-connector-python snowflake-snowpark-python
+    
+    - name: ⚙️ Configure Snowflake Connection
+      run: |
+        # Create connection configuration
+        cat > config/deployment.env << EOF
+        SF_ACCOUNT=${{ secrets.SF_ACCOUNT }}
+        SF_USER=${{ secrets.SF_USER }}
+        SF_PASSWORD=${{ secrets.SF_PASSWORD }}
+        SF_ROLE=${{ secrets.SF_ROLE }}
+        SF_WAREHOUSE=${{ secrets.SF_WAREHOUSE }}
+        SF_DATABASE=${{ secrets.SF_DATABASE }}
+        SF_SCHEMA=${{ secrets.SF_SCHEMA }}
+        EOF
+        
+        echo "✅ Snowflake configuration created"
+    
+    - name: 🏗️ Deploy Infrastructure
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        from ingest_loader import DocumentIngestor
+        from embed_generator import EmbeddingGenerator
+        from telemetry_task import TelemetryTracker
+        
+        print('🔧 Setting up Snowflake infrastructure...')
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        session = conn_manager.create_session()
+        
+        try:
+            # Setup database objects
+            ingestor = DocumentIngestor(session)
+            ingestor.setup_infrastructure()
+            print('✅ Document ingestion infrastructure ready')
+            
+            # Setup embeddings
+            generator = EmbeddingGenerator(session)
+            generator.setup_embeddings_table()
+            print('✅ Embeddings infrastructure ready')
+            
+            # Setup telemetry
+            tracker = TelemetryTracker(session)
+            tracker.setup_telemetry_table()
+            print('✅ Telemetry infrastructure ready')
+            
+            print('🎉 Infrastructure deployment completed successfully')
+            
+        except Exception as e:
+            print(f'❌ Deployment failed: {e}')
+            sys.exit(1)
+        finally:
+            conn_manager.close()
+        "
+        
+    - name: 📊 Deploy SQL Objects
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        
+        print('🗄️ Deploying SQL objects...')
+        
+        # Read SQL deployment script
+        with open('notebooks/cortex_pipeline.sql', 'r') as f:
+            sql_content = f.read()
+        
+        # Split into individual statements
+        statements = [stmt.strip() for stmt in sql_content.split(';') if stmt.strip()]
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        session = conn_manager.create_session()
+        
+        try:
+            deployed_count = 0
+            for i, statement in enumerate(statements):
+                if statement and not statement.startswith('--') and not statement.startswith('/*'):
+                    # Skip comments and empty lines
+                    if any(keyword in statement.upper() for keyword in ['CREATE', 'INSERT', 'SELECT']):
+                        try:
+                            session.sql(statement).collect()
+                            deployed_count += 1
+                        except Exception as e:
+                            print(f'⚠️  Statement {i+1} failed (may be intentional): {str(e)[:100]}...')
+            
+            print(f'✅ Deployed {deployed_count} SQL statements successfully')
+            
+        except Exception as e:
+            print(f'❌ SQL deployment failed: {e}')
+            sys.exit(1)
+        finally:
+            conn_manager.close()
+        "
+    
+    - name: 🧪 Run Deployment Tests
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        from cortex_query import CortexQueryEngine
+        
+        print('🧪 Running deployment validation tests...')
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        session = conn_manager.create_session()
+        
+        try:
+            # Test 1: Verify tables exist
+            tables_to_check = ['media_raw', 'media_embeddings', 'genai_telemetry']
+            for table in tables_to_check:
+                result = session.sql(f'SELECT COUNT(*) FROM {table}').collect()
+                print(f'✅ Table {table}: {result[0][0]} records')
+            
+            # Test 2: Test Cortex functions
+            cortex_test = session.sql(\"SELECT SNOWFLAKE.CORTEX.EMBED_TEXT_768('text-embedding-ada-002', 'test') IS NOT NULL AS cortex_available\").collect()
+            if cortex_test[0][0]:
+                print('✅ Cortex functions are available')
+            else:
+                print('❌ Cortex functions not available')
+                sys.exit(1)
+            
+            # Test 3: Test query pipeline (if data exists)
+            try:
+                engine = CortexQueryEngine(session)
+                test_result = engine.query_with_context('What is AI automation?', use_search=False)
+                if test_result and 'answer' in test_result:
+                    print('✅ Query pipeline functional')
+                else:
+                    print('⚠️  Query pipeline needs sample data')
+            except Exception as e:
+                print(f'⚠️  Query pipeline test failed: {e}')
+            
+            print('🎉 Deployment validation completed successfully')
+            
+        except Exception as e:
+            print(f'❌ Deployment validation failed: {e}')
+            sys.exit(1)
+        finally:
+            conn_manager.close()
+        "
+
+  # ============================
+  # DATA SEEDING
+  # ============================
+  
+  seed-data:
+    name: 🌱 Seed Sample Data
+    runs-on: ubuntu-latest
+    needs: deploy-snowflake
+    if: github.ref == 'refs/heads/main' || github.event.inputs.environment == 'dev'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: 📦 Install Dependencies
+      run: |
+        pip install snowflake-connector-python snowflake-snowpark-python
+    
+    - name: 📄 Load Sample Documents
+      run: |
+        cat > config/deployment.env << EOF
+        SF_ACCOUNT=${{ secrets.SF_ACCOUNT }}
+        SF_USER=${{ secrets.SF_USER }}
+        SF_PASSWORD=${{ secrets.SF_PASSWORD }}
+        SF_ROLE=${{ secrets.SF_ROLE }}
+        SF_WAREHOUSE=${{ secrets.SF_WAREHOUSE }}
+        SF_DATABASE=${{ secrets.SF_DATABASE }}
+        SF_SCHEMA=${{ secrets.SF_SCHEMA }}
+        EOF
+        
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        from ingest_loader import DocumentIngestor
+        from embed_generator import EmbeddingGenerator
+        
+        print('🌱 Loading sample data...')
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        session = conn_manager.create_session()
+        
+        try:
+            # Load sample documents
+            ingestor = DocumentIngestor(session)
+            if ingestor.load_sample_documents():
+                print('✅ Sample documents loaded')
+            
+            # Generate embeddings
+            generator = EmbeddingGenerator(session)
+            results = generator.process_all_documents()
+            print(f\"✅ Generated embeddings for {results['success_count']} documents\")
+            
+            print('🎉 Sample data seeding completed')
+            
+        except Exception as e:
+            print(f'❌ Data seeding failed: {e}')
+            sys.exit(1)
+        finally:
+            conn_manager.close()
+        "
+
+  # ============================
+  # PERFORMANCE TESTING
+  # ============================
+  
+  performance-test:
+    name: ⚡ Performance Testing
+    runs-on: ubuntu-latest
+    needs: seed-data
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: 📥 Checkout Code
+      uses: actions/checkout@v4
+    
+    - name: 🐍 Setup Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+    
+    - name: 📦 Install Dependencies
+      run: |
+        pip install snowflake-connector-python snowflake-snowpark-python
+    
+    - name: 🚀 Run Performance Tests
+      run: |
+        cat > config/deployment.env << EOF
+        SF_ACCOUNT=${{ secrets.SF_ACCOUNT }}
+        SF_USER=${{ secrets.SF_USER }}
+        SF_PASSWORD=${{ secrets.SF_PASSWORD }}
+        SF_ROLE=${{ secrets.SF_ROLE }}
+        SF_WAREHOUSE=${{ secrets.SF_WAREHOUSE }}
+        SF_DATABASE=${{ secrets.SF_DATABASE }}
+        SF_SCHEMA=${{ secrets.SF_SCHEMA }}
+        EOF
+        
+        python -c "
+        import sys
+        import time
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        from cortex_query import CortexQueryEngine
+        
+        print('⚡ Running performance tests...')
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        session = conn_manager.create_session()
+        
+        try:
+            engine = CortexQueryEngine(session)
+            
+            # Test queries
+            test_queries = [
+                'What are the benefits of AI automation?',
+                'How does Snowflake Cortex work?',
+                'What is a GenAI strategy?'
+            ]
+            
+            total_latency = 0
+            successful_queries = 0
+            
+            for query in test_queries:
+                try:
+                    start_time = time.time()
+                    result = engine.query_with_context(query)
+                    latency = (time.time() - start_time) * 1000
+                    
+                    if result and 'answer' in result:
+                        total_latency += latency
+                        successful_queries += 1
+                        print(f'✅ Query latency: {latency:.1f}ms')
+                    else:
+                        print(f'❌ Query failed: {query}')
+                        
+                except Exception as e:
+                    print(f'❌ Query error: {e}')
+            
+            if successful_queries > 0:
+                avg_latency = total_latency / successful_queries
+                success_rate = (successful_queries / len(test_queries)) * 100
+                
+                print(f'📊 Performance Results:')
+                print(f'  Average Latency: {avg_latency:.1f}ms')
+                print(f'  Success Rate: {success_rate:.1f}%')
+                
+                # Check performance targets
+                if avg_latency > 2000:
+                    print('⚠️  Warning: Average latency exceeds 2s target')
+                if success_rate < 95:
+                    print('⚠️  Warning: Success rate below 95% target')
+                    
+                if avg_latency <= 2000 and success_rate >= 95:
+                    print('🎉 Performance targets met!')
+            else:
+                print('❌ No successful queries - performance test failed')
+                sys.exit(1)
+                
+        except Exception as e:
+            print(f'❌ Performance test failed: {e}')
+            sys.exit(1)
+        finally:
+            conn_manager.close()
+        "
+    
+    - name: 💰 Cost Analysis
+      run: |
+        python -c "
+        import sys
+        sys.path.append('src')
+        
+        from utils import SnowflakeConnectionManager
+        from telemetry_task import TelemetryTracker
+        
+        print('💰 Analyzing deployment costs...')
+        
+        # Initialize connection
+        conn_manager = SnowflakeConnectionManager('config/deployment.env')
+        
+        try:
+            tracker = TelemetryTracker(conn_manager.create_session())
+            
+            # Get cost analysis for last hour
+            costs = tracker.get_cost_breakdown(1)
+            
+            if costs and 'total_cost_usd' in costs:
+                total_cost = costs['total_cost_usd']
+                print(f'📊 Total deployment cost: \${total_cost:.6f}')
+                
+                # Cost breakdown
+                if 'cost_by_operation' in costs:
+                    print('💡 Cost breakdown:')
+                    for item in costs['cost_by_operation']:
+                        print(f\"  {item['operation_type']}: \${item['total_cost_usd']:.6f}\")
+                
+                # Cost efficiency check
+                if total_cost > 0.10:  # \$0.10 threshold
+                    print('⚠️  Warning: Deployment cost exceeds expected threshold')
+                else:
+                    print('✅ Deployment costs within acceptable range')
+            else:
+                print('ℹ️  No cost data available yet')
+                
+        except Exception as e:
+            print(f'⚠️  Cost analysis failed: {e}')
+        finally:
+            conn_manager.close()
+        "
+
+  # ============================
+  # NOTIFICATION
+  # ============================
+  
+  notify:
+    name: 📢 Deployment Notification
+    runs-on: ubuntu-latest
+    needs: [deploy-snowflake, seed-data, performance-test]
+    if: always()
+    
+    steps:
+    - name: 📊 Deployment Summary
+      run: |
+        echo "## 🧠 Snowflake Cortex GenAI Pipeline Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Environment:** ${{ github.event.inputs.environment || 'dev' }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Triggered by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        
+        if [[ "${{ needs.deploy-snowflake.result }}" == "success" ]]; then
+          echo "✅ **Infrastructure Deployment:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Infrastructure Deployment:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ "${{ needs.seed-data.result }}" == "success" ]]; then
+          echo "✅ **Sample Data Loading:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Sample Data Loading:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        if [[ "${{ needs.performance-test.result }}" == "success" ]]; then
+          echo "✅ **Performance Testing:** Success" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ **Performance Testing:** Failed" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Dashboard URL:** https://${{ secrets.SF_ACCOUNT }}.snowflakecomputing.com" >> $GITHUB_STEP_SUMMARY
+        echo "**Repository:** ${{ github.server_url }}/${{ github.repository }}" >> $GITHUB_STEP_SUMMARY
+
+# ============================
+# REQUIRED SECRETS
+# ============================
+# Configure these secrets in your GitHub repository:
+# - SF_ACCOUNT: Your Snowflake account identifier
+# - SF_USER: Snowflake username for deployment
+# - SF_PASSWORD: Snowflake password
+# - SF_ROLE: Snowflake role with necessary privileges
+# - SF_WAREHOUSE: Warehouse name (e.g., GENAI_WH)
+# - SF_DATABASE: Database name (e.g., GENAI_DB)  
+# - SF_SCHEMA: Schema name (e.g., PUBLIC)

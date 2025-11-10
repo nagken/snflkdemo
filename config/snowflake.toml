@@ -1,0 +1,17 @@
+[connections.default]
+account = "your_account.region"
+user = "your_username"
+password = "your_password"
+role = "ACCOUNTADMIN"
+warehouse = "GENAI_WH"
+database = "GENAI_DB"
+schema = "PUBLIC"
+
+[connections.prod]
+account = "prod_account.region"
+user = "prod_username"
+password = "prod_password"
+role = "GENAI_ROLE"
+warehouse = "GENAI_WH_L"
+database = "GENAI_DB"
+schema = "PUBLIC"

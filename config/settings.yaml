@@ -1,0 +1,46 @@
+pipeline:
+  name: "Snowflake Cortex GenAI Pipeline"
+  version: "1.0.0"
+  description: "Production-ready GenAI pipeline using Snowflake Cortex"
+
+cortex:
+  embedding:
+    model: "text-embedding-ada-002"
+    batch_size: 100
+    max_tokens: 8192
+  
+  llm:
+    model: "mistral-large"
+    max_tokens: 4096
+    temperature: 0.7
+    top_p: 0.9
+    
+  search:
+    top_k: 5
+    similarity_threshold: 0.8
+
+telemetry:
+  enabled: true
+  batch_size: 50
+  retention_days: 90
+  metrics:
+    - "latency"
+    - "token_count"
+    - "cost_per_1k_tokens"
+    - "success_rate"
+
+dashboard:
+  title: "Cortex GenAI Analytics"
+  refresh_interval: 30
+  charts:
+    - "latency_trends"
+    - "cost_analysis"
+    - "success_metrics"
+    - "query_volume"
+
+data:
+  raw_stage: "@media_raw"
+  tables:
+    raw: "media_raw"
+    embeddings: "media_embeddings"
+    telemetry: "genai_telemetry"
