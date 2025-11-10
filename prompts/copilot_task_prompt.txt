@@ -155,11 +155,11 @@ Always provide:
 
 ### Success Criteria
 Generated pipelines must achieve:
-- ✅ Sub-2 second query response times
-- ✅ 97%+ success rate in production
-- ✅ Cost optimization with detailed tracking
-- ✅ Comprehensive error handling and recovery
-- ✅ Production-ready monitoring and observability
-- ✅ Complete documentation and examples
+- Sub-2 second query response times
+- 97%+ success rate in production
+- Cost optimization with detailed tracking
+- Comprehensive error handling and recovery
+- Production-ready monitoring and observability
+- Complete documentation and examples
 
 Generate production-quality code that teams can deploy immediately with confidence.

@@ -712,15 +712,15 @@ SELECT
 -- ============================
 
 -- Summary of what we've built:
--- ✅ Complete data model (raw docs, embeddings, telemetry, query history)  
--- ✅ Sample data insertion with realistic content
--- ✅ Vector embedding generation using CORTEX.EMBED_TEXT_768
--- ✅ Semantic search using VECTOR_COSINE_SIMILARITY  
--- ✅ LLM completion using CORTEX.COMPLETE with context
--- ✅ Full pipeline stored procedure combining search + completion
--- ✅ Analytics queries for monitoring and optimization
--- ✅ Helper functions and maintenance tasks
--- ✅ Performance monitoring and cost tracking
+-- Complete data model (raw docs, embeddings, telemetry, query history)  
+-- Sample data insertion with realistic content
+-- Vector embedding generation using CORTEX.EMBED_TEXT_768
+-- Semantic search using VECTOR_COSINE_SIMILARITY  
+-- LLM completion using CORTEX.COMPLETE with context
+-- Full pipeline stored procedure combining search + completion
+-- Analytics queries for monitoring and optimization
+-- Helper functions and maintenance tasks
+-- Performance monitoring and cost tracking
 
 -- Key Performance Metrics Demonstrated:
 -- - Sub-2 second query processing

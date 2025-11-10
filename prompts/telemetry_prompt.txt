@@ -227,10 +227,10 @@ class ExtendedTelemetryMixin:
 ### Success Metrics for Extensions
 
 Generated telemetry extensions must provide:
-- ✅ **Latency Insights**: Breakdown of performance bottlenecks
-- ✅ **Cost Intelligence**: Detailed cost optimization opportunities  
-- ✅ **Quality Metrics**: Response relevance and user satisfaction
-- ✅ **Predictive Analytics**: Forecasting and capacity planning
+- **Latency Insights**: Breakdown of performance bottlenecks
+- **Cost Intelligence**: Detailed cost optimization opportunities  
+- **Quality Metrics**: Response relevance and user satisfaction
+- **Predictive Analytics**: Forecasting and capacity planning
 - ✅ **Automated Alerts**: Proactive issue detection and notification
 - ✅ **Business Impact**: ROI measurement and productivity tracking
 - ✅ **Root Cause Analysis**: Automated error investigation and remediation

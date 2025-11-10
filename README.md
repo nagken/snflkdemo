@@ -6,6 +6,24 @@
 [![Python](https://img.shields.io/badge/Python-3.11+-green)](https://python.org)
 [![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-red)](https://streamlit.io)
 
+## Overview
+
+This project demonstrates a complete generative AI pipeline using Snowflake Cortex, featuring document ingestion, vector embeddings, semantic search, and LLM-powered responses with comprehensive monitoring and analytics.
+
+## Documentation
+
+### Architecture Documentation
+- **[Detailed Architecture Diagrams](docs/detailed_architecture_diagrams.md)** - Comprehensive system architecture with 8 detailed Mermaid diagrams
+- **[Project Structure Diagrams](docs/project_structure_diagrams.md)** - Visual project organization and component relationships  
+- **[Technical Specifications](docs/technical_specifications.md)** - Complete API specs, configurations, and deployment guides
+- **[Flow Diagrams](docs/flow_diagram.md)** - Original system flow and process diagrams
+- **[ASCII Flow Diagram](docs/ascii_flow_diagram.md)** - Text-based architectural overview
+
+### Additional Resources
+- **[Presentation Content](slides/Snowflake_Cortex_Architecture_Content.md)** - Architecture overview presentation
+- **[Sample Data](sample_data/company_docs.md)** - Test documents and demo content
+- **[Project Status](STATUS.md)** - Implementation progress and current state
+
 ## Features
 
 - **Document Processing** - PDF, DOCX, TXT ingestion
@@ -102,7 +120,7 @@ python3 -m streamlit run src/dashboard_plot.py
 # Opens at: http://localhost:8501
 ```
 
-## 📋 Production Usage
+## Production Usage
 
 ### With Real Snowflake Data
 
@@ -118,14 +136,14 @@ python3 src/cortex_query.py
 
 ```
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 | Metric | Target | Achieved |
 |--------|--------|----------|
-| Response Time | < 2 seconds | ✅ ~1.02s |
-| Success Rate | > 95% | ✅ 100% |
-| Cost Efficiency | Optimized | ✅ $0.05/run |
-| Scalability | Production | ✅ Ready |
+| Response Time | < 2 seconds | Achieved ~1.02s |
+| Success Rate | > 95% | Achieved 100% |
+| Cost Efficiency | Optimized | Achieved $0.05/run |
+| Scalability | Production | Ready |
 
 ## Project Structure
 

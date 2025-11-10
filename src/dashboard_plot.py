@@ -142,7 +142,7 @@ def create_metrics_cards(data: Dict[str, Any]):
         card_class = "success-metric" if success_rate >= 95 else "warning-metric" if success_rate >= 85 else "metric-card"
         st.markdown(
             f"""<div class="metric-card {card_class}">
-            <h3>✅ Success Rate</h3>
+            <h3>Success Rate</h3>
             <h2>{success_rate:.1f}%</h2>
             </div>""", 
             unsafe_allow_html=True
@@ -515,7 +515,7 @@ def main():
     # Module status
     st.sidebar.markdown("### 📊 System Status")
     if MODULES_AVAILABLE:
-        st.sidebar.success("✅ All modules loaded")
+        st.sidebar.success("All modules loaded")
     else:
         st.sidebar.error("❌ Modules not available")
     
